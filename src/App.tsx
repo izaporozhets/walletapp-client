@@ -17,7 +17,7 @@ function App() {
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
-  const [balanceCheckId, setBalanceCheckId] = useState('');
+  const [walletId, setWalletId] = useState('');
   const [timestamp, setTimestamp] = useState('');
   const [historicalBalance, setHistoricalBalance] = useState<number | null>(null);
 
@@ -88,7 +88,7 @@ function App() {
       setBalanceError('');
       const res = await API.get('/wallet/balance-at', {
         params: {
-          walletId: balanceCheckId,
+          walletId: walletId,
           timestamp,
         },
       });
@@ -149,11 +149,44 @@ function App() {
 
         <section>
           <h3>Historical Balance</h3>
-          <input placeholder="Wallet ID" value={balanceCheckId} onChange={e => setBalanceCheckId(e.target.value)} />
-          <input placeholder="Timestamp (ISO)" value={timestamp} onChange={e => setTimestamp(e.target.value)} />
-          <button onClick={getHistoricalBalance} disabled={!balanceCheckId || !timestamp}>Check</button>
+          
+          <input
+            placeholder="Wallet ID"
+            value={walletId}
+            onChange={e => setWalletId(e.target.value)}
+          />
+
+          <input
+            type="datetime-local"
+            value={timestamp}
+            onChange={e => setTimestamp(e.target.value)}
+          />
+
+          <button
+            onClick={async () => {
+              try {
+                setBalanceError('');
+                const isoTimestamp = new Date(timestamp).toISOString();
+                const res = await API.get(`/wallet/${walletId}/balance-at`, {
+                  params: {
+                    timestamp: isoTimestamp,
+                  },
+                });
+                setHistoricalBalance(res.data);
+              } catch (e: any) {
+                setBalanceError(e.response?.data?.message || 'Failed to get balance');
+                setHistoricalBalance(null);
+              }
+            }}
+            disabled={!walletId || !timestamp}
+          >
+            Check
+          </button>
+
           {balanceError && <div className="error">{balanceError}</div>}
-          {historicalBalance !== null && <p><b>Balance at {timestamp}:</b> {historicalBalance}</p>}
+          {historicalBalance !== null && (
+            <p><b>Balance at {timestamp}:</b> {historicalBalance}</p>
+          )}
         </section>
       </div>
 
@@ -202,7 +235,7 @@ function App() {
       const amount = '5';
       if (!id) return;
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         API.post('/wallet/withdraw', {
           walletId: id,
           amount,
